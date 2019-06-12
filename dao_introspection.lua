@@ -1,33 +1,39 @@
-require"luarocks.loader"
+local inspect = require "inspect"
 
-require("kong.core.globalpatches")({
+require("kong.globalpatches")({
   cli = true,
 })
 
 local conf_loader = require "kong.conf_loader"
-local DAOFactory = require "kong.dao.factory"
 local DB = require "kong.db"
 
 local conf = assert(conf_loader(TEST_CONF_PATH))
-conf.database = "cassandra"
+conf.database = "postgres"
 
 local db = assert(DB.new(conf))
-local dao = assert(DAOFactory.new(conf, db))
+assert(db:init_connector())
 
-print("Coordinator set? " .. tostring(dao.db:first_coordinator()))
-local coordinator, err = dao.db:get_coordinator()
+local ok, err
 
-local ok, err = coordinator:change_keyspace("kong")
-if not ok then
-  return nil, err
-end
+consumer, err = db.consumers:insert({
+  username = "c1",
+})
 
-local q_routes    = "SELECT * FROM routes"
+print("res = ", inspect(consumer))
+print("err = ", inspect(err))
 
-for rows, err in coordinator:iterate(q_routes) do
-  if err then
-    print (err)
-  end
-  print("First " .. #rows .. " rows")
-end
+ok, err = db.consumers:select({
+  id = consumer.id,
+})
+
+print("res = ", inspect(ok))
+print("err = ", inspect(err))
+
+ok, err = db.consumers:delete({
+  id = consumer.id,
+})
+
+print("res = ", inspect(ok))
+print("err = ", inspect(err))
+
 
